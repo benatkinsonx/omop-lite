@@ -56,7 +56,6 @@ class Database(ABC):
         """Check if a file exists, handling both Path and Traversable types."""
         if isinstance(file_path, Traversable):
             return file_path.is_file()
-        return file_path.exists()
 
     def refresh_metadata(self) -> None:
         """Refresh the metadata for the database."""
@@ -113,11 +112,41 @@ class Database(ABC):
         """
 
         if settings.synthetic:
-            return files("omop_lite.synthetic")
+            if settings.synthetic_number == 1000:
+                return files("omop_lite.synthetic.1000")
+            return files("omop_lite.synthetic.100")
         data_dir = Path(settings.data_dir)
         if not data_dir.exists():
             raise FileNotFoundError(f"Data directory {data_dir} does not exist")
         return data_dir
+    
+    def _get_delimiter(self) -> str:
+        """
+        Return the delimiter based on the dialect.
+        Common implementation for all databases.
+
+        - Synthetic 100 is `\t`
+        - Synthetic 1000 is `,`
+        - Default is `\t`
+
+        This is used to determine the delimiter for the COPY command.
+        """
+        if settings.synthetic:
+            if settings.synthetic_number == 1000:
+                return ","
+            return settings.delimiter
+        else:
+            return settings.delimiter
+        
+    def _get_quote(self) -> str:
+        """
+        Return the quote based on the dialect.
+        Common implementation for all databases.
+        """
+        if settings.synthetic:
+            if settings.synthetic_number == 1000:
+                return '"'
+        return '\b'
 
     def _execute_sql_file(self, file_path: Union[str, Traversable]) -> None:
         """

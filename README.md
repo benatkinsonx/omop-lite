@@ -17,6 +17,8 @@ You can configure the Docker container using the following environment variables
 - `SCHEMA_NAME`: The name of the schema to be created/used in the database. Default is `public`.
 - `DATA_DIR`: The directory containing the data CSV files. Default is `data`.
 - `SYNTHETIC`: Load synthetic data (boolean). Default is `false`
+- `SYNTHETIC_NUMBER`: Size of synthetic data, `100` or `1000`. Default is `100`.
+- `DELIMITER`: The delimiter used to separate data. Default is `tab`, can also be `,`
 
 ## Usage
 
@@ -111,19 +113,15 @@ To use your own data with the Helm chart:
 If you need synthetic data, some is provided in the `synthetic` directory. It provides a small amount of data to load quickly.
 To load the synthetic data, run the container with the `SYNTHETIC` environment variable set to `true`.
 
-This data only provides the following tables:
-
-- `CONCEPT`
-- `CONDITION_OCCURRENCE`
-- `MEASUREMENT`
-- `OBSERVATION`
-- `PERSON`
+- 100 is fake data.
+- 1000 is [Synthea 1k](https://registry.opendata.aws/synthea-omop/) data.
 
 ## Bring Your Own Data
 
 You can provide your own data for loading into the tables by placing your files in the `data/` directory. This should contain `.csv` files matching the data tables (`DRUG_STRENGTH.csv`, `CONCEPT.csv`, etc.).
 
 To match the vocabulary files from Athena, this data should be tab-separated, but as a `.csv` file extension.
+You can override the delimiter with `DELIMITER` configuration.
 
 ## Setup Script
 
