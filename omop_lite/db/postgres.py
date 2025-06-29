@@ -2,7 +2,7 @@ from sqlalchemy import create_engine, MetaData, text
 from importlib.resources import files
 import logging
 from .base import Database
-from omop_lite.settings import settings
+from omop_lite.settings import Settings
 from typing import Union
 from pathlib import Path
 from importlib.abc import Traversable
@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 
 
 class PostgresDatabase(Database):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, settings: Settings) -> None:
+        super().__init__(settings)
         self.db_url = f"postgresql+psycopg2://{settings.db_user}:{settings.db_password}@{settings.db_host}:{settings.db_port}/{settings.db_name}"
         self.engine = create_engine(self.db_url)
         self.metadata = MetaData(schema=settings.schema_name)
@@ -30,7 +30,7 @@ class PostgresDatabase(Database):
     def add_constraints(self) -> None:
         """
         Add primary keys, constraints, and indices.
-        
+
         Override to add full-text search.
         """
         super().add_constraints()
@@ -41,7 +41,7 @@ class PostgresDatabase(Database):
         if not self.engine:
             raise RuntimeError("Database engine not initialized")
 
-        if not settings.fts_create:
+        if not self.settings.fts_create:
             logger.info("Full-text search creation disabled")
             return
 
@@ -60,7 +60,7 @@ class PostgresDatabase(Database):
     def _bulk_load(self, table_name: str, file_path: Union[Path, Traversable]) -> None:
         if not self.engine:
             raise RuntimeError("Database engine not initialized")
-        
+
         delimiter = self._get_delimiter()
         quote = self._get_quote()
 
@@ -71,7 +71,7 @@ class PostgresDatabase(Database):
                 try:
                     with open(str(file_path), "r") as f:
                         cursor.copy_expert(
-                            f"COPY {settings.schema_name}.{table_name} FROM STDIN WITH (FORMAT csv, DELIMITER E'{delimiter}', NULL '', QUOTE E'{quote}', HEADER, ENCODING 'UTF8')",
+                            f"COPY {self.settings.schema_name}.{table_name} FROM STDIN WITH (FORMAT csv, DELIMITER E'{delimiter}', NULL '', QUOTE E'{quote}', HEADER, ENCODING 'UTF8')",
                             f,
                         )
                     connection.commit()

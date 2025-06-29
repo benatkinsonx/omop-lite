@@ -5,7 +5,8 @@ from typing import Union, Optional
 import logging
 from importlib.resources import files
 from importlib.abc import Traversable
-from omop_lite.settings import settings
+from omop_lite.settings import Settings
+from sqlalchemy.sql import text
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +14,8 @@ logger = logging.getLogger(__name__)
 class Database(ABC):
     """Abstract base class for database operations"""
 
-    def __init__(self) -> None:
+    def __init__(self, settings: Settings) -> None:
+        self.settings = settings
         self.engine: Optional[Engine] = None
         self.metadata: Optional[MetaData] = None
         self.file_path: Optional[Union[Path, Traversable]] = None
@@ -41,6 +43,11 @@ class Database(ABC):
             "VISIT_OCCURRENCE",
             "VOCABULARY",
         ]
+
+    @property
+    def dialect(self) -> str:
+        """Get the database dialect."""
+        return self.settings.dialect
 
     @abstractmethod
     def create_schema(self, schema_name: str) -> None:
@@ -75,14 +82,60 @@ class Database(ABC):
         self._execute_sql_file(self.file_path.joinpath("ddl.sql"))
         self.refresh_metadata()
 
-    def add_constraints(self) -> None:
-        """Add constraints to the tables in the database.
-        
-        Executes the sql files for the given data directory.
-        """
+    def add_primary_keys(self) -> None:
+        """Add primary keys to the tables in the database."""
         self._execute_sql_file(self.file_path.joinpath("primary_keys.sql"))
+
+    def add_constraints(self) -> None:
+        """Add constraints to the tables in the database."""
         self._execute_sql_file(self.file_path.joinpath("constraints.sql"))
+
+    def add_indices(self) -> None:
+        """Add indices to the tables in the database."""
         self._execute_sql_file(self.file_path.joinpath("indices.sql"))
+
+    def add_all_constraints(self) -> None:
+        """Add all constraints, primary keys, and indices to the tables in the database.
+
+        This is a convenience method that calls all three constraint methods.
+        """
+        self.add_primary_keys()
+        self.add_constraints()
+        self.add_indices()
+
+    def drop_tables(self) -> None:
+        """Drop all tables in the database."""
+        if not self.metadata or not self.engine:
+            raise RuntimeError("Database not properly initialized")
+
+        # Drop all tables in reverse dependency order
+        self.metadata.drop_all(bind=self.engine)
+        logger.info("✅ All tables dropped successfully")
+
+    def drop_schema(self, schema_name: str) -> None:
+        """Drop a schema and all its contents."""
+        if not self.engine:
+            raise RuntimeError("Database engine not initialized")
+
+        with self.engine.connect() as connection:
+            if self.dialect == "postgresql":
+                connection.execute(
+                    text(f'DROP SCHEMA IF EXISTS "{schema_name}" CASCADE')
+                )
+            else:  # SQL Server
+                connection.execute(text(f"DROP SCHEMA IF EXISTS [{schema_name}]"))
+            connection.commit()
+            logger.info(f"✅ Schema '{schema_name}' dropped successfully")
+
+    def drop_all(self, schema_name: str) -> None:
+        """Drop everything: tables and schema.
+
+        This is a convenience method that drops tables first, then the schema.
+        """
+        self.drop_tables()
+        if schema_name != "public":
+            self.drop_schema(schema_name)
+        logger.info("✅ Database completely dropped")
 
     def load_data(self) -> None:
         """Load data into tables."""
@@ -111,15 +164,15 @@ class Database(ABC):
         Common implementation for all databases.
         """
 
-        if settings.synthetic:
-            if settings.synthetic_number == 1000:
+        if self.settings.synthetic:
+            if self.settings.synthetic_number == 1000:
                 return files("omop_lite.synthetic.1000")
             return files("omop_lite.synthetic.100")
-        data_dir = Path(settings.data_dir)
+        data_dir = Path(self.settings.data_dir)
         if not data_dir.exists():
             raise FileNotFoundError(f"Data directory {data_dir} does not exist")
         return data_dir
-    
+
     def _get_delimiter(self) -> str:
         """
         Return the delimiter based on the dialect.
@@ -131,22 +184,22 @@ class Database(ABC):
 
         This is used to determine the delimiter for the COPY command.
         """
-        if settings.synthetic:
-            if settings.synthetic_number == 1000:
+        if self.settings.synthetic:
+            if self.settings.synthetic_number == 1000:
                 return ","
-            return settings.delimiter
+            return self.settings.delimiter
         else:
-            return settings.delimiter
-        
+            return self.settings.delimiter
+
     def _get_quote(self) -> str:
         """
         Return the quote based on the dialect.
         Common implementation for all databases.
         """
-        if settings.synthetic:
-            if settings.synthetic_number == 1000:
+        if self.settings.synthetic:
+            if self.settings.synthetic_number == 1000:
                 return '"'
-        return '\b'
+        return "\b"
 
     def _execute_sql_file(self, file_path: Union[str, Traversable]) -> None:
         """
@@ -157,7 +210,7 @@ class Database(ABC):
             file_path = str(file_path)
 
         with open(file_path, "r") as f:
-            sql = f.read().replace("@cdmDatabaseSchema", settings.schema_name)
+            sql = f.read().replace("@cdmDatabaseSchema", self.settings.schema_name)
 
         if not self.engine:
             raise RuntimeError("Database engine not initialized")

@@ -1,6 +1,6 @@
 [project]
 name = "omop-lite"
-version = "0.0.18"
+version = "0.1.0"
 description = "Get an OMOP CDM database running quickly."
 readme = "README.md"
 requires-python = ">=3.13"
@@ -10,6 +10,7 @@ dependencies = [
     "pydantic-settings>=2.8.1",
     "pyodbc>=5.2.0",
     "sqlalchemy>=2.0.39",
+    "typer>=0.16.0",
 ]
 
 [build-system]
@@ -25,7 +26,7 @@ include = [
 ]
 
 [project.scripts]
-omop-lite = "omop_lite:main"
+omop-lite = "omop_lite.cli:main_cli"
 
 [dependency-groups]
 dev = [
@@ -41,6 +42,7 @@ convention = "google"
 [tool.mypy]
 python_version = "3.13"
 strict = true
+plugins = ['pydantic.mypy']
 
 # Prevent ANY implicit `Any` types  
 disallow_any_generics = true
