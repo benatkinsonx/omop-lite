@@ -1,13 +1,37 @@
 # Ben Atkinson's README
 
-# HOW TO SET UP OMOP-LITE
+# HOW TO SET UP OMOP-LITE 
 
 1) clone this repo
 2) create a data folder in the root of this omop-lite directory
 3) add your data to it (either the proper vocabs folder James emailed you or copy and paste the data in `omop-lite/synthetic/1000`)
 4) replace the embeddings/embeddings.parquet file with the one James sent to you
 5) challenges I faced when doing this on 26/07/25: the omop-lite main branch isnt up to date so have to replace the docker-compose in it with that which is in the `bugfix/postgres-user` branch - line 23 is missing `"-U", "postgres"` --> without this you get `"FATAL root not found error"`
+
+- USING DOCKER
 6) cd into the omop-lite root directory in a terminal and run `docker compose --profile text-search up`. If it has worked you will see `text-search-1 exited with code 0`.
+
+- USING SINGULARITY:
+6)   1. Pull and convert Docker image to Singularity image (only once)
+        singularity pull /home/apyba3/pgvector_pg17.sif docker://pgvector/pgvector:pg17
+
+     2. Create directories on host for data and runtime files (only once)
+        mkdir -p /home/apyba3/pgdata
+        mkdir -p /home/apyba3/pgrun
+
+     3. Initialize the PostgreSQL data directory inside the container (only once)
+        singularity exec \
+          --bind /home/apyba3/pgdata:/var/lib/postgresql/data \
+          /home/apyba3/pgvector_pg17.sif \
+          initdb -D /var/lib/postgresql/data
+
+     4. Start PostgreSQL server (run each time you want to start the DB)
+        singularity exec \
+          --bind /home/apyba3/pgdata:/var/lib/postgresql/data \
+          --bind /home/apyba3/pgrun:/var/run/postgresql \
+          /home/apyba3/pgvector_pg17.sif \
+          /usr/lib/postgresql/17/bin/postgres -D /var/lib/postgresql/data
+
 
 ---
 # omop-lite
