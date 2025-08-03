@@ -8,10 +8,10 @@
 4) replace the embeddings/embeddings.parquet file with the one James sent to you
 5) challenges I faced when doing this on 26/07/25: the omop-lite main branch isnt up to date so have to replace the docker-compose in it with that which is in the `bugfix/postgres-user` branch - line 23 is missing `"-U", "postgres"` --> without this you get `"FATAL root not found error"`
 
-- USING DOCKER
+## USING DOCKER
 6) cd into the omop-lite root directory in a terminal and run `docker compose --profile text-search up`. If it has worked you will see `text-search-1 exited with code 0`.
 
-- USING SINGULARITY:
+## USING SINGULARITY:
 6)   1. Pull and convert Docker image to Singularity image (only once)
   
         `singularity pull /home/apyba3/pgvector_pg17.sif docker://pgvector/pgvector:pg17`
