@@ -13,25 +13,33 @@
 
 - USING SINGULARITY:
 6)   1. Pull and convert Docker image to Singularity image (only once)
-        singularity pull /home/apyba3/pgvector_pg17.sif docker://pgvector/pgvector:pg17
+  
+        `singularity pull /home/apyba3/pgvector_pg17.sif docker://pgvector/pgvector:pg17`
 
      2. Create directories on host for data and runtime files (only once)
-        mkdir -p /home/apyba3/pgdata
-        mkdir -p /home/apyba3/pgrun
+        
+        `mkdir -p /home/apyba3/pgdata`
+        
+        `mkdir -p /home/apyba3/pgrun`
 
-     3. Initialize the PostgreSQL data directory inside the container (only once)
-        singularity exec \
+     4. Initialize the PostgreSQL data directory inside the container (only once)
+        
+        ```
+        singularity exec \        
           --bind /home/apyba3/pgdata:/var/lib/postgresql/data \
           /home/apyba3/pgvector_pg17.sif \
-          initdb -D /var/lib/postgresql/data
+          initdb -D /var/lib/postgresql/data`
+        ```
 
-     4. Start PostgreSQL server (run each time you want to start the DB)
+     6. Start PostgreSQL server (run each time you want to start the DB)
+ 
+        ```
         singularity exec \
           --bind /home/apyba3/pgdata:/var/lib/postgresql/data \
           --bind /home/apyba3/pgrun:/var/run/postgresql \
           /home/apyba3/pgvector_pg17.sif \
           /usr/lib/postgresql/17/bin/postgres -D /var/lib/postgresql/data
-
+        ```
 
 ---
 # omop-lite
